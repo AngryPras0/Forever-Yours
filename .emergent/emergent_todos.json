@@ -1,0 +1,38 @@
+[
+  {
+    "content": "Set up dependencies (GSAP, AOS, howler for audio)",
+    "status": "completed"
+  },
+  {
+    "content": "Page 1: Archery scene with farm, tree, target, particles, guided arrow",
+    "status": "completed"
+  },
+  {
+    "content": "Page 2: Love Quiz with 5 questions, glassmorphism, retry logic",
+    "status": "completed"
+  },
+  {
+    "content": "Page 3: Golden Treasure chest unlock animation",
+    "status": "completed"
+  },
+  {
+    "content": "Page 4: Handwritten letter with moonlit sky, lanterns, petals",
+    "status": "completed"
+  },
+  {
+    "content": "Final Scene: Counter, infinity, hug button",
+    "status": "completed"
+  },
+  {
+    "content": "Background music toggle + sound effects",
+    "status": "completed"
+  },
+  {
+    "content": "Mobile responsive polish & cinematic transitions",
+    "status": "completed"
+  },
+  {
+    "content": "Test end-to-end via testing agent",
+    "status": "completed"
+  }
+]

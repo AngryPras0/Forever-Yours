@@ -1,0 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Dancing+Script:wght@500;600;700&family=Caveat:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #root { margin: 0; padding: 0; min-height: 100%; width: 100%; overflow-x: hidden; background: #000; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #fff; overscroll-behavior: none; }
+button { font-family: inherit; cursor: pointer; }
+.no-select { user-select: none; -webkit-user-select: none; }
