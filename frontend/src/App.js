@@ -17,6 +17,7 @@ function App() {
   useEffect(() => {
     initAudio();
   }, []);
+  // initAudio is a stable module-level function; eslint-disable not needed.
 
   const toggleMusic = async () => {
     if (!musicOn) {

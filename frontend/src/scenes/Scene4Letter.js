@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import ParticleCanvas from "../components/ParticleCanvas";
 import { playSfx } from "../utils/audio";
 
-const LETTER_PARAGRAPHS = [
+const RAW_LINES = [
   "My Love,",
   "Finally...",
   "The moment has arrived.",
@@ -80,26 +80,43 @@ const LETTER_PARAGRAPHS = [
   "Forever.",
 ];
 
-export default function Scene4Letter({ onComplete }) {
-  const scrollRef = useRef(null);
-  const observerRef = useRef(null);
+const LETTER_LINES = RAW_LINES.map((text, i) => ({ id: `line-${i}`, text }));
+const LANTERN_KEYS = Array.from({ length: 6 }, (_, i) => `lantern-${i}`);
 
+function useLetterReveal() {
   useEffect(() => {
     playSfx("sparkle");
-    if ("IntersectionObserver" in window) {
-      const obs = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) entry.target.classList.add("visible");
-          });
-        },
-        { threshold: 0.18 }
-      );
-      observerRef.current = obs;
-      document.querySelectorAll(".letter-line").forEach((el) => obs.observe(el));
-      return () => obs.disconnect();
-    }
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return undefined;
+    const observer = new window.IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) entry.target.classList.add("visible");
+        });
+      },
+      { threshold: 0.18 }
+    );
+    document.querySelectorAll(".letter-line").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
+}
+
+function Lanterns() {
+  return (
+    <div className="lanterns">
+      {LANTERN_KEYS.map((key, i) => (
+        <div key={key} className={`lantern lantern-${i}`}>
+          <div className="lantern-glow" />
+          <div className="lantern-body" />
+          <div className="lantern-string" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Scene4Letter({ onComplete }) {
+  const scrollRef = useRef(null);
+  useLetterReveal();
 
   return (
     <div className="scene scene4 no-select">
@@ -109,25 +126,15 @@ export default function Scene4Letter({ onComplete }) {
       </div>
       <ParticleCanvas type="stars" count={150} className="layer" />
       <ParticleCanvas type="petals" count={20} color="#ffb6d5" className="layer" />
-
-      {/* Floating lanterns */}
-      <div className="lanterns">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className={`lantern lantern-${i}`}>
-            <div className="lantern-glow" />
-            <div className="lantern-body" />
-            <div className="lantern-string" />
-          </div>
-        ))}
-      </div>
+      <Lanterns />
 
       <div className="letter-container">
         <div ref={scrollRef} className="letter-paper">
           <h1 className="letter-title">To The Woman Who Changed My Life</h1>
           <div className="letter-divider">✦ ✦ ✦</div>
-          {LETTER_PARAGRAPHS.map((p, i) => (
-            <p key={i} className="letter-line" style={{ animationDelay: `${i * 0.05}s` }}>
-              {p}
+          {LETTER_LINES.map((line, i) => (
+            <p key={line.id} className="letter-line" style={{ animationDelay: `${i * 0.05}s` }}>
+              {line.text}
             </p>
           ))}
           <div className="letter-signature">

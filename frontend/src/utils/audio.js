@@ -13,7 +13,11 @@ export function initAudio() {
     masterGain.gain.value = 0.55;
     masterGain.connect(ctx.destination);
   } catch (e) {
-    console.warn("AudioContext init failed", e);
+    // AudioContext unavailable — gracefully degrade (no audio)
+    if (typeof window !== "undefined" && window.__DEBUG_AUDIO__) {
+      // eslint-disable-next-line no-console
+      console.warn("AudioContext init failed", e);
+    }
   }
 }
 
@@ -23,18 +27,14 @@ function ensureCtx() {
   return ctx;
 }
 
-// Romantic ambient pad: layered detuned sines + slow LFO + delay
-export async function playMusic() {
-  ensureCtx();
-  if (!ctx || musicPlaying) return;
-  musicPlaying = true;
+// --- playMusic helpers ---
+const BASE_FREQS = [220.0, 277.18, 329.63, 415.30]; // A3 warm chord (A, C#, E, G#)
 
-  const baseFreqs = [220.0, 277.18, 329.63, 415.30]; // A3 chord-ish (A, C#, E, G#) warm
+function buildMusicBus() {
   const gainNode = ctx.createGain();
   gainNode.gain.value = 0.0;
   gainNode.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 2.5);
 
-  // Delay for spaciousness
   const delay = ctx.createDelay(2.0);
   delay.delayTime.value = 0.55;
   const feedback = ctx.createGain();
@@ -42,7 +42,6 @@ export async function playMusic() {
   delay.connect(feedback);
   feedback.connect(delay);
 
-  // Lowpass to keep it soft
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
   filter.frequency.value = 1200;
@@ -52,35 +51,51 @@ export async function playMusic() {
   filter.connect(masterGain);
   delay.connect(masterGain);
 
-  const oscs = [];
-  baseFreqs.forEach((f, i) => {
-    const o1 = ctx.createOscillator();
-    o1.type = "sine";
-    o1.frequency.value = f;
-    const o2 = ctx.createOscillator();
-    o2.type = "triangle";
-    o2.frequency.value = f * 2;
-    const g = ctx.createGain();
-    g.gain.value = 0.25 / (i + 1);
-    o1.connect(g); o2.connect(g);
-    g.connect(gainNode);
+  return { gainNode, delay, feedback, filter };
+}
 
-    // LFO for gentle vibrato
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.15 + i * 0.05;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 1.2;
-    lfo.connect(lfoGain);
-    lfoGain.connect(o1.frequency);
-    o1.start(); o2.start(); lfo.start();
-    oscs.push(o1, o2, lfo);
-  });
+function buildVoice(freq, index, gainNode) {
+  const o1 = ctx.createOscillator();
+  o1.type = "sine";
+  o1.frequency.value = freq;
+  const o2 = ctx.createOscillator();
+  o2.type = "triangle";
+  o2.frequency.value = freq * 2;
+  const g = ctx.createGain();
+  g.gain.value = 0.25 / (index + 1);
+  o1.connect(g);
+  o2.connect(g);
+  g.connect(gainNode);
 
-  // Slow chord progression every ~8s by modulating filter
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.15 + index * 0.05;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 1.2;
+  lfo.connect(lfoGain);
+  lfoGain.connect(o1.frequency);
+
+  o1.start();
+  o2.start();
+  lfo.start();
+  return [o1, o2, lfo];
+}
+
+function scheduleFilterSweep(filter) {
   const startTime = ctx.currentTime;
   filter.frequency.setValueAtTime(900, startTime);
   filter.frequency.linearRampToValueAtTime(1500, startTime + 8);
   filter.frequency.linearRampToValueAtTime(900, startTime + 16);
+}
+
+// Romantic ambient pad: layered detuned sines + slow LFO + delay
+export async function playMusic() {
+  ensureCtx();
+  if (!ctx || musicPlaying) return;
+  musicPlaying = true;
+
+  const { gainNode, delay, feedback, filter } = buildMusicBus();
+  const oscs = BASE_FREQS.flatMap((f, i) => buildVoice(f, i, gainNode));
+  scheduleFilterSweep(filter);
 
   musicNodes = [gainNode, ...oscs, filter, delay, feedback];
 }
@@ -91,9 +106,20 @@ export function stopMusic() {
   try {
     musicNodes[0].gain.cancelScheduledValues(ctx.currentTime);
     musicNodes[0].gain.linearRampToValueAtTime(0, fadeTime);
-  } catch (e) {}
+  } catch (err) {
+    // Node may already be disconnected — non-fatal
+    void err;
+  }
   setTimeout(() => {
-    musicNodes.forEach((n) => { try { n.stop && n.stop(); n.disconnect && n.disconnect(); } catch (e) {} });
+    musicNodes.forEach((n) => {
+      try {
+        if (n.stop) n.stop();
+        if (n.disconnect) n.disconnect();
+      } catch (err) {
+        // Node already stopped/disconnected — non-fatal
+        void err;
+      }
+    });
     musicNodes = [];
     musicPlaying = false;
   }, 1400);
